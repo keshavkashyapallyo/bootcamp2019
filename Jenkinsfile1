@@ -1,0 +1,93 @@
+#!groovy
+pipeline {
+    agent any
+
+    environment {
+        EMAIL_RECIPIENTS = 'keshav.kashyap@tothenew.com'
+    }
+
+      stages {
+        stage('Checkout') {
+            steps {
+                deleteDir()
+                checkout([$class: 'GitSCM', branches: [[name: "*/${params.BRANCH}"]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'git-credentials', url: 'git@github.com:allyo-org/QA_JobReqAutomation.git']]])
+            }
+        }
+        stage('Preparing Environment') {
+            steps {
+              sh """
+                /usr/local/bin/virtualenv  -p python3 regression
+                . regression/bin/activate
+                java -version
+                gradle -v
+                mvn -version
+              """
+            }
+        }
+
+        stage('gradle clean'){
+            steps {
+              sh"""
+              . regression/bin/activate
+              gradle clean -Psuites=staging -PtestType=Applicant -Pver=v1 --stacktrace
+              """
+            }
+        }
+
+        stage('gradle build'){
+            steps {
+              sh"""
+              . regression/bin/activate
+              gradle build -Psuites=staging -PtestType=Applicant -Pver=v1 --stacktrace
+              """
+            }
+        }
+
+        stage('gradle test'){
+            steps {
+              sh"""
+              . regression/bin/activate
+              gradle test -Psuites=staging -PtestType=Applicant -Pver=v1 --stacktrace
+              """
+            }
+        }
+
+        stage('Report'){
+            steps {
+              sh"""
+              . regression/bin/activate
+              filename=ExtentReport-\$(date +%Y-%m-%d.%H:%M:%S).html
+              echo \$filename > file.txt
+              cp ExtentReport.html \${filename}
+              aws s3 cp \${filename} s3://allyo-automation/regression/\${filename} --acl public-read
+                """
+              script {
+              // trim removes leading and trailing whitespace from the string
+               file_url = readFile('file.txt').trim()
+             }
+            }
+        }
+
+        stage("Publish HTML"){
+            steps {
+                publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: '', reportFiles: 'Allyo-API-api-execution-report.html', reportName: 'HTML Report', reportTitles: ''])
+
+            }
+        }
+     }
+
+     post {
+         failure {
+           script {
+               wrap([$class: 'BuildUser']) {
+            mail to:"${EMAIL_RECIPIENTS}", subject:"FAILURE:SFTP Job Req Test - Build Number ${BUILD_NUMBER} || Build run by - ${BUILD_USER}", body: "The SFTP Job Req Test ${BUILD_NUMBER} has been failed due to timeout issue. Detailed Changes can be viewed here: https://jenkins.allyo.com/job/${JOB_NAME}/${BUILD_NUMBER}/changes \n The branch used to build this job is ${params.BRANCH}"
+            }
+           }}
+         success {
+           script {
+               wrap([$class: 'BuildUser']) {
+            mail to:"${EMAIL_RECIPIENTS}", subject:"Success:SFTP Job Req Test - Build Number ${BUILD_NUMBER} || Build run by - ${BUILD_USER}", body: "Hello Team,The SFTP Job Req Test ${BUILD_NUMBER} has been Completed successfully.\n The test Report can be downloaded from - \n \n https://s3-us-west-2.amazonaws.com/allyo-automation/regression/$file_url . \n  Detailed Changes can be viewed here: https://jenkins.allyo.com/job/${JOB_NAME}/${BUILD_NUMBER}/changes \n The branch used to build this job is ${params.BRANCH}"
+            }}
+           }
+        }
+}
