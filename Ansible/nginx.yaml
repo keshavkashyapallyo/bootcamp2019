@@ -1,0 +1,28 @@
+---
+ - hosts: Web_Server
+   name: Setup Nginx
+   become: yes
+   tasks:
+     - name: apt update
+       apt:
+          update_cache: yes
+
+     - name: ensure nginx is at the latest version
+       apt:
+          name: nginx
+          state: latest
+
+     - name: start nginx
+       service:
+        name: nginx
+        state: started
+       become: yes
+
+     - name: copy the nginx config file and restart nginx
+       copy:
+          src: /var/www/mysample.com/html/index.html
+          dest: /var/www/html/index.nginx-debian.html
+          mode: '0644'
+       become: yes
+
+
