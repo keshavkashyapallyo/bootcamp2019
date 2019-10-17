@@ -4,11 +4,14 @@ provider "aws" {
   version    = "~> 2.0"
 }
 
+//Create VPC
+
 module "vpc" {
   source = "./module/vpc"
   cidr_block =var.cidr_block
 }
 
+//Create IAM
 module "iam" {
   source = "./module/iam"
   iamInstanceProfileName = var.iamInstanceProfileName
@@ -21,6 +24,7 @@ module "iam" {
 //create ECS Cluster
 
 
+//Create launch Template
 module "launchTemplate" {
   source = "./module/launchTemplate"
   securityGroupId = module.vpc.aws_vpc_security_group_id
@@ -30,6 +34,9 @@ module "launchTemplate" {
 
 
 }
+
+
+//Create Auto Scaling Group
 
 module "autoScalingGroup" {
   source = "./module/asg"
