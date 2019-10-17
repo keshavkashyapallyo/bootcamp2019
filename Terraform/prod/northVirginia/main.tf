@@ -37,7 +37,6 @@ module "launchTemplate" {
 
 
 //Create Auto Scaling Group
-
 module "autoScalingGroup" {
   source = "./module/asg"
   launchTemplateID = module.launchTemplate.launchTemplateId
