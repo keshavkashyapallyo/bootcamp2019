@@ -1,1 +1,10 @@
 .idea/
+Ansible/AnsibleUsingRole/
+Ansible/nginxAssignmentUsingTemplate/
+Ansible/roles/
+Docker/
+Jenkins/
+Lambda/
+MySQL/
+Python/
+php/
